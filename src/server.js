@@ -10,8 +10,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/static', express.static(path.join(__dirname, '..', 'public')));
 app.use('/images', express.static(config.imagesDir));
+app.use('/snapshots', express.static(config.snapshotsDir));
 
-// 首页 - 返回Web界面
+// 首页
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
@@ -23,7 +24,7 @@ app.get('/api/posts', (req, res) => {
   res.json({ success: true, data: posts, total: posts.length });
 });
 
-// API: 获取单个帖子
+// API: 获取单个帖子（含评论）
 app.get('/api/posts/:noteId', (req, res) => {
   const post = store.getById(req.params.noteId);
   if (!post) {
@@ -32,15 +33,15 @@ app.get('/api/posts/:noteId', (req, res) => {
   res.json({ success: true, data: post });
 });
 
-// API: 通过URL保存帖子
-app.post('/api/posts/save', async (req, res) => {
+// API: 完整归档帖子（抓取+下载图片+评论+快照）
+app.post('/api/posts/archive', async (req, res) => {
   const { url } = req.body;
   if (!url) {
     return res.status(400).json({ success: false, error: '请提供URL' });
   }
 
   try {
-    const post = await scraper.fetchPost(url);
+    const post = await scraper.archivePost(url);
     store.add(post);
     res.json({ success: true, data: post });
   } catch (err) {
@@ -76,16 +77,17 @@ app.delete('/api/posts/:noteId', (req, res) => {
   }
 });
 
-// API: 下载帖子图片
-app.post('/api/posts/:noteId/download', async (req, res) => {
+// API: 重新生成快照
+app.post('/api/posts/:noteId/snapshot', (req, res) => {
   const post = store.getById(req.params.noteId);
   if (!post) {
     return res.status(404).json({ success: false, error: '帖子不存在' });
   }
 
   try {
-    const images = await scraper.downloadImages(post);
-    res.json({ success: true, data: images });
+    post.snapshotPath = scraper.generateSnapshot(post);
+    store.add(post);
+    res.json({ success: true, data: { snapshotPath: post.snapshotPath } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -103,10 +105,13 @@ app.get('/api/stats', (req, res) => {
     .slice(0, 20)
     .map(([name, count]) => ({ name, count }));
 
+  const archivedCount = posts.filter(p => p.archived).length;
+
   res.json({
     success: true,
     data: {
       totalPosts: posts.length,
+      archivedPosts: archivedCount,
       totalAuthors: authors.size,
       totalTags: Object.keys(tagCount).length,
       topTags,
@@ -115,7 +120,7 @@ app.get('/api/stats', (req, res) => {
 });
 
 app.listen(config.port, () => {
-  console.log(`小红书帖子保存工具已启动!`);
+  console.log(`小红书帖子归档工具已启动!`);
   console.log(`打开浏览器访问: http://localhost:${config.port}`);
   console.log(`已保存 ${store.count()} 条帖子`);
 });

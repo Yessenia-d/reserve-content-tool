@@ -8,11 +8,10 @@ class PostStore {
   }
 
   _ensureDataDir() {
-    if (!fs.existsSync(config.dataDir)) {
-      fs.mkdirSync(config.dataDir, { recursive: true });
-    }
-    if (!fs.existsSync(config.imagesDir)) {
-      fs.mkdirSync(config.imagesDir, { recursive: true });
+    for (const dir of [config.dataDir, config.imagesDir, config.snapshotsDir]) {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
     }
   }
 

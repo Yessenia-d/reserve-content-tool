@@ -4,6 +4,7 @@ module.exports = {
   // 数据存储路径
   dataDir: path.join(__dirname, '..', 'data'),
   imagesDir: path.join(__dirname, '..', 'data', 'images'),
+  snapshotsDir: path.join(__dirname, '..', 'data', 'snapshots'),
   dbFile: path.join(__dirname, '..', 'data', 'posts.json'),
 
   // 服务器端口
