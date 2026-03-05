@@ -1,0 +1,5 @@
+node_modules/
+data/posts.json
+data/images/
+test/tmp_test_data/
+.env

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小红书帖子保存工具</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --red: #ff2442;
+      --red-light: #ff6b81;
+      --bg: #f5f5f5;
+      --card-bg: #fff;
+      --text: #333;
+      --text-light: #999;
+      --border: #eee;
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* 顶部导航 */
+    .navbar {
+      background: var(--card-bg);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+      padding: 12px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .navbar .logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--red);
+      white-space: nowrap;
+    }
+
+    .search-box {
+      flex: 1;
+      max-width: 500px;
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 8px 16px 8px 36px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-box input:focus {
+      border-color: var(--red);
+    }
+
+    .search-box::before {
+      content: "🔍";
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 20px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--red);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--red-light);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* 统计栏 */
+    .stats-bar {
+      padding: 16px 24px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      font-size: 14px;
+      color: var(--text-light);
+    }
+
+    .stats-bar span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stats-bar .count {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* 瀑布流容器 */
+    .waterfall {
+      padding: 0 24px 24px;
+      column-count: 4;
+      column-gap: 16px;
+    }
+
+    @media (max-width: 1200px) { .waterfall { column-count: 3; } }
+    @media (max-width: 900px) { .waterfall { column-count: 2; } }
+    @media (max-width: 600px) { .waterfall { column-count: 1; } }
+
+    /* 卡片 */
+    .card {
+      break-inside: avoid;
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+
+    .card-image {
+      width: 100%;
+      display: block;
+      background: #f0f0f0;
+      min-height: 120px;
+    }
+
+    .card-image.placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 160px;
+      color: var(--text-light);
+      font-size: 48px;
+      background: linear-gradient(135deg, #ffeef0, #fff5f6);
+    }
+
+    .card-body {
+      padding: 12px;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.4;
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-light);
+    }
+
+    .card-author {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 60%;
+    }
+
+    .card-stats {
+      display: flex;
+      gap: 8px;
+    }
+
+    .card-tags {
+      padding: 4px 12px 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      background: #fff0f1;
+      color: var(--red);
+      border-radius: 10px;
+      font-size: 11px;
+    }
+
+    .card-actions {
+      padding: 0 12px 12px;
+      display: flex;
+      gap: 8px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .card:hover .card-actions {
+      opacity: 1;
+    }
+
+    .card-actions .btn {
+      padding: 4px 12px;
+      font-size: 12px;
+    }
+
+    /* 弹窗 */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--card-bg);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .modal h2 {
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+
+    .modal .form-group {
+      margin-bottom: 12px;
+    }
+
+    .modal label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-light);
+      margin-bottom: 4px;
+    }
+
+    .modal input, .modal textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .modal input:focus, .modal textarea:focus {
+      border-color: var(--red);
+    }
+
+    .modal textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+
+    /* 详情弹窗 */
+    .detail-modal .modal {
+      max-width: 680px;
+    }
+
+    .detail-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .detail-author {
+      font-size: 14px;
+      color: var(--text-light);
+      margin-bottom: 16px;
+    }
+
+    .detail-content {
+      font-size: 15px;
+      line-height: 1.8;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+
+    .detail-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .detail-images img {
+      max-width: 100%;
+      border-radius: 8px;
+    }
+
+    .detail-stats {
+      display: flex;
+      gap: 16px;
+      font-size: 14px;
+      color: var(--text-light);
+      margin-bottom: 12px;
+    }
+
+    .detail-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    /* 空状态 */
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-light);
+    }
+
+    .empty-state .icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+
+    .empty-state p {
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .empty-state .hint {
+      font-size: 14px;
+    }
+
+    /* Toast 提示 */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #333;
+      color: white;
+      padding: 10px 24px;
+      border-radius: 20px;
+      font-size: 14px;
+      z-index: 300;
+      transition: transform 0.3s;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+<!-- 导航栏 -->
+<nav class="navbar">
+  <div class="logo">小红书收藏夹</div>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="搜索标题、内容、作者、标签...">
+  </div>
+  <div class="nav-actions">
+    <button class="btn btn-outline" onclick="openSaveModal()">链接保存</button>
+    <button class="btn btn-primary" onclick="openAddModal()">手动添加</button>
+  </div>
+</nav>
+
+<!-- 统计栏 -->
+<div class="stats-bar" id="statsBar">
+  <span>共 <b class="count" id="totalCount">0</b> 条帖子</span>
+</div>
+
+<!-- 帖子列表 -->
+<div class="waterfall" id="postList"></div>
+
+<!-- 空状态 -->
+<div class="empty-state" id="emptyState" style="display:none;">
+  <div class="icon">📑</div>
+  <p>还没有保存任何帖子</p>
+  <div class="hint">点击右上角按钮开始保存小红书帖子吧</div>
+</div>
+
+<!-- 链接保存弹窗 -->
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <h2>通过链接保存</h2>
+    <div class="form-group">
+      <label>小红书帖子链接</label>
+      <input type="text" id="saveUrl" placeholder="粘贴小红书分享链接...">
+    </div>
+    <p style="font-size:12px;color:var(--text-light);margin-bottom:8px;">
+      支持 xiaohongshu.com/explore/... 和 xhslink.com/... 格式链接
+    </p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModals()">取消</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveByUrl()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 手动添加弹窗 -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <h2>手动添加帖子</h2>
+    <div class="form-group">
+      <label>标题 *</label>
+      <input type="text" id="addTitle" placeholder="帖子标题">
+    </div>
+    <div class="form-group">
+      <label>作者</label>
+      <input type="text" id="addAuthor" placeholder="作者昵称">
+    </div>
+    <div class="form-group">
+      <label>内容</label>
+      <textarea id="addContent" placeholder="帖子内容或描述"></textarea>
+    </div>
+    <div class="form-group">
+      <label>链接 (可选)</label>
+      <input type="text" id="addUrl" placeholder="帖子原始链接">
+    </div>
+    <div class="form-group">
+      <label>标签 (逗号分隔)</label>
+      <input type="text" id="addTags" placeholder="美食, 旅行, 穿搭">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModals()">取消</button>
+      <button class="btn btn-primary" onclick="addPost()">添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- 详情弹窗 -->
+<div class="modal-overlay detail-modal" id="detailModal">
+  <div class="modal" id="detailContent"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  let allPosts = [];
+
+  // 加载帖子
+  async function loadPosts(query) {
+    const url = query ? `/api/posts?q=${encodeURIComponent(query)}` : '/api/posts';
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.success) {
+      allPosts = json.data;
+      renderPosts(allPosts);
+      document.getElementById('totalCount').textContent = json.total;
+    }
+  }
+
+  // 渲染帖子卡片
+  function renderPosts(posts) {
+    const list = document.getElementById('postList');
+    const empty = document.getElementById('emptyState');
+
+    if (posts.length === 0) {
+      list.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+
+    empty.style.display = 'none';
+    list.innerHTML = posts.map(post => {
+      const imgHtml = post.images && post.images.length > 0
+        ? `<img class="card-image" src="${escapeHtml(post.images[0].url || post.images[0].localPath || '')}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\'card-image placeholder\\'>📷</div>'">`
+        : `<div class="card-image placeholder">${post.video ? '🎬' : '📝'}</div>`;
+
+      const tagsHtml = (post.tags || []).slice(0, 3).map(t =>
+        `<span class="tag">#${escapeHtml(t)}</span>`
+      ).join('');
+
+      return `
+        <div class="card" onclick="showDetail('${escapeHtml(post.noteId)}')">
+          ${imgHtml}
+          <div class="card-body">
+            <div class="card-title">${escapeHtml(post.title)}</div>
+            <div class="card-meta">
+              <span class="card-author">${escapeHtml(post.author || '未知')}</span>
+              <span class="card-stats">
+                ❤ ${formatNum(post.likes)}
+              </span>
+            </div>
+          </div>
+          ${tagsHtml ? `<div class="card-tags">${tagsHtml}</div>` : ''}
+          <div class="card-actions">
+            <button class="btn btn-outline" onclick="event.stopPropagation();deletePost('${escapeHtml(post.noteId)}')">删除</button>
+            ${post.url ? `<button class="btn btn-outline" onclick="event.stopPropagation();window.open('${escapeHtml(post.url)}','_blank')">原文</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 显示帖子详情
+  async function showDetail(noteId) {
+    const res = await fetch(`/api/posts/${noteId}`);
+    const json = await res.json();
+    if (!json.success) return;
+
+    const post = json.data;
+    const imagesHtml = (post.images || []).map(img =>
+      `<img src="${escapeHtml(img.url || '')}" alt="" loading="lazy" onerror="this.style.display='none'">`
+    ).join('');
+
+    const tagsHtml = (post.tags || []).map(t =>
+      `<span class="tag">#${escapeHtml(t)}</span>`
+    ).join('');
+
+    document.getElementById('detailContent').innerHTML = `
+      <div class="detail-title">${escapeHtml(post.title)}</div>
+      <div class="detail-author">
+        ${escapeHtml(post.author || '未知')}
+        ${post.publishTime ? ` · ${escapeHtml(post.publishTime)}` : ''}
+        ${post.savedAt ? ` · 保存于 ${new Date(post.savedAt).toLocaleDateString('zh-CN')}` : ''}
+      </div>
+      <div class="detail-content">${escapeHtml(post.content || '(无内容)')}</div>
+      ${imagesHtml ? `<div class="detail-images">${imagesHtml}</div>` : ''}
+      <div class="detail-stats">
+        <span>❤ ${formatNum(post.likes)} 点赞</span>
+        <span>⭐ ${formatNum(post.collects)} 收藏</span>
+        <span>💬 ${formatNum(post.comments)} 评论</span>
+      </div>
+      ${tagsHtml ? `<div class="detail-tags">${tagsHtml}</div>` : ''}
+      <div class="modal-actions">
+        ${post.url ? `<button class="btn btn-outline" onclick="window.open('${escapeHtml(post.url)}','_blank')">查看原文</button>` : ''}
+        <button class="btn btn-outline" onclick="deletePost('${escapeHtml(post.noteId)}');closeModals()">删除</button>
+        <button class="btn btn-primary" onclick="closeModals()">关闭</button>
+      </div>
+    `;
+
+    document.getElementById('detailModal').classList.add('active');
+  }
+
+  // 通过链接保存
+  async function saveByUrl() {
+    const url = document.getElementById('saveUrl').value.trim();
+    if (!url) return showToast('请输入链接');
+
+    const btn = document.getElementById('saveBtn');
+    btn.textContent = '保存中...';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/posts/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast('保存成功!');
+        closeModals();
+        loadPosts();
+      } else {
+        showToast('保存失败: ' + json.error);
+      }
+    } catch (e) {
+      showToast('网络错误: ' + e.message);
+    } finally {
+      btn.textContent = '保存';
+      btn.disabled = false;
+    }
+  }
+
+  // 手动添加
+  async function addPost() {
+    const title = document.getElementById('addTitle').value.trim();
+    if (!title) return showToast('请输入标题');
+
+    const data = {
+      title,
+      author: document.getElementById('addAuthor').value.trim(),
+      content: document.getElementById('addContent').value.trim(),
+      url: document.getElementById('addUrl').value.trim(),
+      tags: document.getElementById('addTags').value.trim(),
+    };
+
+    try {
+      const res = await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast('添加成功!');
+        closeModals();
+        loadPosts();
+        // 清空表单
+        document.getElementById('addTitle').value = '';
+        document.getElementById('addAuthor').value = '';
+        document.getElementById('addContent').value = '';
+        document.getElementById('addUrl').value = '';
+        document.getElementById('addTags').value = '';
+      } else {
+        showToast('添加失败: ' + json.error);
+      }
+    } catch (e) {
+      showToast('网络错误: ' + e.message);
+    }
+  }
+
+  // 删除帖子
+  async function deletePost(noteId) {
+    if (!confirm('确定要删除这条帖子吗?')) return;
+
+    const res = await fetch(`/api/posts/${noteId}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      showToast('已删除');
+      loadPosts();
+    }
+  }
+
+  // 弹窗控制
+  function openSaveModal() {
+    document.getElementById('saveUrl').value = '';
+    document.getElementById('saveModal').classList.add('active');
+  }
+
+  function openAddModal() {
+    document.getElementById('addModal').classList.add('active');
+  }
+
+  function closeModals() {
+    document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+  }
+
+  // 点击蒙层关闭
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModals();
+    });
+  });
+
+  // 搜索防抖
+  let searchTimer;
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => loadPosts(e.target.value.trim()), 300);
+  });
+
+  // 工具函数
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function formatNum(n) {
+    if (!n) return '0';
+    if (n >= 10000) return (n / 10000).toFixed(1) + 'w';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+    return String(n);
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // 初始化
+  loadPosts();
+</script>
+
+</body>
+</html>

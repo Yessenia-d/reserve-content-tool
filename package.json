@@ -1,0 +1,21 @@
+{
+  "name": "xiaohongshu-saver",
+  "version": "1.0.0",
+  "description": "小红书帖子保存工具 - Xiaohongshu Post Saver",
+  "main": "src/index.js",
+  "bin": {
+    "xhs-save": "./src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "save": "node src/cli.js",
+    "test": "node test/test.js"
+  },
+  "keywords": ["xiaohongshu", "小红书", "scraper", "saver"],
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0"
+  }
+}
