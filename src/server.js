@@ -119,8 +119,23 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-app.listen(config.port, () => {
-  console.log(`小红书帖子归档工具已启动!`);
-  console.log(`打开浏览器访问: http://localhost:${config.port}`);
-  console.log(`已保存 ${store.count()} 条帖子`);
-});
+function startServer(preferredPort) {
+  const server = app.listen(preferredPort, () => {
+    const actualPort = server.address().port;
+    console.log('小红书帖子归档工具已启动!');
+    console.log(`打开浏览器访问: http://localhost:${actualPort}`);
+    console.log(`已保存 ${store.count()} 条帖子`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      const nextPort = Number(preferredPort) + 1;
+      console.warn(`端口 ${preferredPort} 已被占用，自动尝试端口 ${nextPort}...`);
+      startServer(nextPort);
+      return;
+    }
+    throw err;
+  });
+}
+
+startServer(config.port);
